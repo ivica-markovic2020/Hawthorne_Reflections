@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1B3A6B">
+  <title>Apple Education — Professional Learning Series</title>
+  <style>
+    :root {
+      --navy:   #1B3A6B;
+      --navy-l: #2a5298;
+      --green:  #1a7a4a;
+      --green-l:#259a60;
+      --amber:  #c97b00;
+      --amber-l:#e89900;
+      --bg:     #f2f2f7;
+      --card:   #ffffff;
+      --text:   #1c1c1e;
+      --sub:    #6e6e73;
+      --border: #e5e5ea;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(160deg, var(--navy) 0%, var(--navy-l) 100%);
+      padding: 56px 24px 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; left: 0; right: 0;
+      height: 40px;
+      background: var(--bg);
+      clip-path: ellipse(55% 100% at 50% 100%);
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,.85);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(26px, 5vw, 40px);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: 14px;
+      letter-spacing: -.3px;
+    }
+    .hero p {
+      font-size: clamp(15px, 2.5vw, 18px);
+      color: rgba(255,255,255,.75);
+      max-width: 560px;
+      margin: 0 auto 32px;
+      line-height: 1.55;
+    }
+    .hero-stats {
+      display: inline-flex;
+      gap: 32px;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 16px;
+      padding: 16px 28px;
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 22px; font-weight: 700; color: #fff; }
+    .stat-lbl { font-size: 11px; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
+
+    /* ── Body ── */
+    .body {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 40px 20px 60px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--sub);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Workshop cards ── */
+    .workshops {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      margin-bottom: 44px;
+    }
+
+    .ws-card {
+      background: var(--card);
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: transform .18s ease, box-shadow .18s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .ws-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.11); }
+    .ws-card.disabled { pointer-events: none; opacity: .72; }
+
+    .ws-header {
+      padding: 22px 24px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .ws-num {
+      width: 44px; height: 44px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .ws-meta { flex: 1; }
+    .ws-series {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 4px;
+      opacity: .75;
+    }
+    .ws-title {
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+    .ws-subtitle {
+      font-size: 14px;
+      color: var(--sub);
+      line-height: 1.4;
+    }
+    .ws-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      flex-shrink: 0;
+      letter-spacing: .2px;
+    }
+    .badge-live   { background: #e6f4ed; color: #1a7a4a; }
+    .badge-soon   { background: #f2f2f7; color: #aeaeb2; }
+
+    .ws-body {
+      padding: 0 24px 20px;
+    }
+    .ws-desc {
+      font-size: 14px;
+      color: var(--sub);
+      line-height: 1.55;
+      margin-bottom: 16px;
+    }
+    .ws-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 18px;
+    }
+    .tag {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--sub);
+    }
+    .ws-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .ws-duration {
+      font-size: 12px;
+      color: var(--sub);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .ws-cta {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity .15s;
+    }
+    .ws-cta:hover { opacity: .85; }
+
+    /* ── Audience strip ── */
+    .audience-strip {
+      background: var(--card);
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 44px;
+    }
+    .audience-strip h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    .audience-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .audience-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--sub);
+    }
+    .audience-icon {
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 0 20px 40px;
+      font-size: 12px;
+      color: #aeaeb2;
+    }
+    footer strong { color: var(--sub); }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .hero-stats { gap: 20px; padding: 14px 20px; }
+      .ws-header  { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Hero ── -->
+  <div class="hero">
+    <div class="hero-eyebrow">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      Apple Education
+    </div>
+    <h1>Professional Learning Series</h1>
+    <p>Hands-on workshops designed for IT leaders and educators exploring what's possible when Apple technology meets great teaching.</p>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">3</div><div class="stat-lbl">Workshops</div></div>
+      <div class="stat"><div class="stat-num">6</div><div class="stat-lbl">Hours each</div></div>
+      <div class="stat"><div class="stat-num">∞</div><div class="stat-lbl">Ideas to take home</div></div>
+    </div>
+  </div>
+
+  <!-- ── Body ── -->
+  <div class="body">
+
+    <div class="section-label">Choose a workshop</div>
+
+    <div class="workshops">
+
+      <!-- Workshop 1 — LIVE -->
+      <a class="ws-card" href="hawthorne.html">
+        <div class="ws-header">
+          <div class="ws-num" style="background:var(--navy)">1</div>
+          <div class="ws-meta">
+            <div class="ws-series" style="color:var(--navy)">A Day in the Life</div>
+            <div class="ws-title">Hawthorne College</div>
+            <div class="ws-subtitle">Follow three staff members through a school day powered by Apple</div>
+          </div>
+          <div class="ws-badge badge-live">● Live</div>
+        </div>
+        <div class="ws-body">
+          <div class="ws-desc">
+            Walk through three stations — IT Director, Reflections on what your school, what resonated, and what your school could do next.
+          </div>
+          <div class="ws-tags">
+            <span class="tag">🔐 Device Management</span>
+            <span class="tag">👩‍🏫 Classroom Tools</span>
+            <span class="tag">🧒 Accessibility</span>
+          </div>
+          <div class="ws-footer">
+            <span class="ws-duration">⏱ 6 Hours</span>
+            <button class="ws-cta" style="background:var(--navy);color:#fff">Start Workshop →</button>
+          </div>
+        </div>
+      </a>
+
+      <!-- Workshop 2 — Coming soon -->
+      <div class="ws-card disabled">
+        <div class="ws-header">
+          <div class="ws-num" style="background:#aeaeb2">2</div>
+          <div class="ws-meta">
+            <div class="ws-series" style="color:var(--green)">From Setup to Scale</div>
+            <div class="ws-title">Device Readiness for Every School</div>
+            <div class="ws-subtitle">Planning and deploying Apple devices across your entire organisation</div>
+          </div>
+          <div class="ws-badge badge-soon">Coming Soon</div>
+        </div>
+        <div class="ws-body">
+          <div class="ws-desc">
+            Explore how to move from manual device setup to a fully automated, zero-touch deployment — and what that means for your IT team's workload, your teachers' time, and your students' first day experience.
+          </div>
+          <div class="ws-tags">
+            <span class="tag">📱 Zero-Touch Enrolment</span>
+            <span class="tag">☁️ MDM Strategy</span>
+            <span class="tag">🏫 Multi-Site Deployments</span>
+            <span class="tag">🔑 Identity & SSO</span>
+          </div>
+          <div class="ws-footer">
+            <span class="ws-duration">⏱ ~3 minutes</span>
+            <button class="ws-cta" style="background:var(--bg);color:#aeaeb2;border:1.5px solid var(--border)">Available Soon</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workshop 3 — Coming soon -->
+      <div class="ws-card disabled">
+        <div class="ws-header">
+          <div class="ws-num" style="background:#aeaeb2">3</div>
+          <div class="ws-meta">
+            <div class="ws-series" style="color:var(--amber)">Every Learner, Every Day</div>
+            <div class="ws-title">Inclusion & Creative Learning</div>
+            <div class="ws-subtitle">How Apple tools help every student participate, create and thrive</div>
+          </div>
+          <div class="ws-badge badge-soon">Coming Soon</div>
+        </div>
+        <div class="ws-body">
+          <div class="ws-desc">
+            Discover how built-in accessibility features, creative apps, and on-device intelligence work together to support diverse learners — from students with additional needs to those ready to go beyond the curriculum.
+          </div>
+          <div class="ws-tags">
+            <span class="tag">♿ Accessibility</span>
+            <span class="tag">🎨 Creative Apps</span>
+            <span class="tag">📖 Literacy Support</span>
+            <span class="tag">🌍 Multilingual Learners</span>
+          </div>
+          <div class="ws-footer">
+            <span class="ws-duration">⏱ ~3 minutes</span>
+            <button class="ws-cta" style="background:var(--bg);color:#aeaeb2;border:1.5px solid var(--border)">Available Soon</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /workshops -->
+
+    <!-- Audience strip -->
+    <div class="audience-strip">
+      <h3>Who these workshops are for</h3>
+      <div class="audience-grid">
+        <div class="audience-item"><div class="audience-icon">💻</div><span>IT Directors &amp; Managers</span></div>
+        <div class="audience-item"><div class="audience-icon">🏫</div><span>Principals &amp; Deputy Principals</span></div>
+        <div class="audience-item"><div class="audience-icon">👩‍🏫</div><span>Classroom Teachers</span></div>
+        <div class="audience-item"><div class="audience-icon">📚</div><span>Curriculum Coordinators</span></div>
+        <div class="audience-item"><div class="audience-icon">♿</div><span>Learning Support Staff</span></div>
+        <div class="audience-item"><div class="audience-icon">🎓</div><span>School Leadership Teams</span></div>
+      </div>
+    </div>
+
+  </div><!-- /body -->
+
+  <footer>
+    <strong>Apple Education · Professional Learning Series</strong><br>
+    These workshops are designed for school staff exploring Apple technology in education.
+  </footer>
+
+</body>
+</html>

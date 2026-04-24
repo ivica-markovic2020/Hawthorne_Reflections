@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HC Reflect">
+<meta name="theme-color" content="#1B3A6B">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Hawthorne College — Reflection</title>
+<script src="js/jspdf.umd.min.js"></script>
+<style>
+
+/* ── Reset ───────────────────────────────────────────────── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+:root {
+  --navy:   #1B3A6B;
+  --navy-l: #2a5aab;
+  --green:  #1A4A2E;
+  --green-l:#2a7a4e;
+  --amber:  #C47020;
+  --amber-l:#e8a040;
+  --gold:   #C49A2E;
+  --dark:   #1d1d1f;
+  --gray:   #6e6e73;
+  --lgray:  #aeaeb2;
+  --line:   #e5e5ea;
+  --bg:     #f2f2f7;
+  --card:   #ffffff;
+  --radius: 14px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  width:100%; height:100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  /* Prevent iOS rubber-band scroll on the root */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+}
+
+/* ── App shell ───────────────────────────────────────────── */
+#app {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;   /* avoid inset shorthand — unsupported iOS ≤14 */
+  display: flex;
+  flex-direction: column;
+  /* Use dvh where available for dynamic iOS toolbar handling */
+  height: 100%;
+  height: 100dvh;
+}
+
+/* ── Progress bar ────────────────────────────────────────── */
+#prog { height:4px; background:var(--line); flex-shrink:0; }
+#prog-fill { height:100%; transition:width .4s ease; background:linear-gradient(90deg, var(--navy), var(--amber)); width:0% }
+
+/* ── Screens ─────────────────────────────────────────────── */
+#screens {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Reliable iOS-safe show/hide — no transform transitions */
+.screen {
+  display: none;
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding: 28px 20px 16px;
+}
+.screen.active {
+  display: block;
+  -webkit-animation: sc-in .22s ease both;
+          animation: sc-in .22s ease both;
+}
+@-webkit-keyframes sc-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes sc-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Welcome screen ──────────────────────────────────────── */
+.crest {
+  width:68px; height:80px; border-radius:6px; margin:0 auto 22px;
+  background:linear-gradient(135deg,var(--navy),var(--navy-l));
+  display:flex; align-items:center; justify-content:center;
+}
+.crest span { font-size:26px; font-weight:800; color:rgba(255,255,255,.9); letter-spacing:-1px; }
+.w-title { font-size:26px; font-weight:700; color:var(--dark); text-align:center; letter-spacing:-.5px; line-height:1.2; margin-bottom:6px; }
+.w-sub   { font-size:14px; color:var(--gray); text-align:center; line-height:1.55; margin-bottom:32px; }
+
+/* ── Form fields ─────────────────────────────────────────── */
+.field   { margin-bottom:16px; }
+.f-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; color:var(--lgray); margin-bottom:7px; display:block; }
+input[type=text], textarea {
+  width:100%; background:var(--card); border:1.5px solid var(--line); border-radius:12px;
+  padding:13px 15px; font-size:16px; color:var(--dark); font-family:inherit;
+  outline:none; transition:border-color .2s; -webkit-appearance:none;
+}
+input[type=text]:focus, textarea:focus { border-color:var(--navy); }
+textarea { resize:none; min-height:90px; line-height:1.55; }
+::placeholder { color:var(--lgray); }
+
+/* ── Station header card ─────────────────────────────────── */
+.st-badge { display:flex; align-items:center; gap:11px; margin-bottom:18px; }
+.st-num   { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; color:white; flex-shrink:0; }
+.st-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:2px; }
+.st-pres  { font-size:13px; color:var(--gray); }
+
+.st-card  { border-radius:var(--radius); padding:18px 20px; margin-bottom:24px; }
+.st-theme { font-size:20px; font-weight:700; color:white; letter-spacing:-.2px; margin-bottom:3px; }
+.st-tag   { font-size:12px; color:rgba(255,255,255,.7); line-height:1.5; }
+
+/* ── Question block ──────────────────────────────────────── */
+.q-block  { margin-bottom:22px; }
+.q-label  { font-size:13px; font-weight:600; color:var(--dark); margin-bottom:10px; line-height:1.4; }
+
+/* ── Choice grid (2×2) ───────────────────────────────────── */
+.choice-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.choice {
+  background:var(--card); border:1.5px solid var(--line); border-radius:11px;
+  padding:12px 12px; font-size:13px; font-weight:500; color:var(--dark);
+  cursor:pointer; text-align:center; line-height:1.35; transition:all .15s;
+  user-select:none;
+}
+.choice.sel { border-color:transparent; color:white; }
+.choice:active { transform:scale(.97); }
+
+/* Single-col choices for longer text */
+.choice-grid.solo { grid-template-columns:1fr; }
+.choice-grid.solo .choice { text-align:left; padding:13px 15px; font-size:14px; }
+
+/* ── Notes field ─────────────────────────────────────────── */
+.notes-wrap { margin-top:6px; }
+.notes-lbl  { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; color:var(--lgray); margin-bottom:7px; display:block; }
+
+/* ── Overall screen ──────────────────────────────────────── */
+.sec-title { font-size:24px; font-weight:700; color:var(--dark); letter-spacing:-.4px; margin-bottom:5px; }
+.sec-sub   { font-size:14px; color:var(--gray); margin-bottom:26px; line-height:1.5; }
+
+/* ── Summary screen ──────────────────────────────────────── */
+.sum-hi   { font-size:24px; font-weight:700; color:var(--dark); letter-spacing:-.4px; margin-bottom:3px; }
+.sum-date { font-size:12px; color:var(--lgray); margin-bottom:24px; }
+
+.sum-block { background:var(--card); border-radius:var(--radius); overflow:hidden; margin-bottom:12px; }
+.sum-hd    { padding:10px 16px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:white; }
+.sum-body  { padding:14px 16px; }
+.sum-row   { margin-bottom:12px; }
+.sum-row:last-child { margin-bottom:0; }
+.sum-q     { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--lgray); margin-bottom:3px; }
+.sum-a     { font-size:14px; color:var(--dark); line-height:1.5; }
+.sum-a.mt  { color:var(--lgray); font-style:italic; }
+
+/* ── Share buttons ───────────────────────────────────────── */
+.share-row { display:flex; flex-direction:column; gap:10px; margin-top:16px; padding-bottom:8px; }
+.share-btn {
+  width:100%; border:none; border-radius:var(--radius);
+  padding:16px 20px; font-size:16px; font-weight:600; font-family:inherit;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px;
+  transition:opacity .15s;
+}
+.share-btn:active { opacity:.8; }
+.share-btn.primary { background:var(--navy); color:white; }
+.share-btn.reset-btn {
+  background: rgba(255,59,48,.08);
+  color: #ff3b30;
+}
+.share-btn.reset-btn:active { opacity:.7; }
+
+/* ── Bottom nav ──────────────────────────────────────────── */
+#nav {
+  padding: 14px 20px;
+  /* Proper iOS safe area — use max() so we never go below 14px */
+  padding-bottom: max(14px, calc(14px + env(safe-area-inset-bottom, 0px)));
+  background: rgba(242,242,247,.96);
+  -webkit-backdrop-filter: blur(20px);
+          backdrop-filter: blur(20px);
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+  /* Ensure nav stays above iOS home indicator */
+  position: relative;
+  z-index: 10;
+}
+.nb { flex:1; padding:14px; border-radius:12px; font-size:16px; font-weight:600; font-family:inherit; border:none; cursor:pointer; transition:opacity .15s; }
+.nb:active { opacity:.75; }
+.nb.back   { background:rgba(0,0,0,.08); color:var(--dark); flex:0 0 56px; }
+.nb.fwd    { color:white; }
+.nb.fwd.it { background:var(--navy); }
+.nb.fwd.sec{ background:var(--green); }
+.nb.fwd.pri{ background:var(--amber); }
+.nb.fwd.dk { background:var(--dark); }
+#nav.first .nb.back { display:none; }
+#nav.last  .nb.fwd  { display:none; }
+
+</style>
+</head>
+<body>
+<div id="app">
+<div id="prog"><div id="prog-fill"></div></div>
+<div id="screens">
+
+<!-- ══════════════ SCREEN 0: Welcome ══════════════ -->
+<div class="screen active" id="s0">
+  <div class="crest"><span>HC</span></div>
+  <div class="w-title">A Day in the Life</div>
+  <div class="w-sub">Quick reflections on your visit to Hawthorne College. Takes about 3 minutes — complete as you go.</div>
+  <div style="text-align:center;margin-bottom:20px">
+    <button onclick="doReset()" style="background:none;border:none;font-size:12px;color:var(--lgray);cursor:pointer;font-family:inherit;padding:4px 8px;border-radius:6px">↺ Clear &amp; reset for next participant</button>
+  </div>
+  <div class="field"><label class="f-label">Your name</label><input type="text" id="f-name" placeholder="First and last name"></div>
+  <div class="field"><label class="f-label">Your school</label><input type="text" id="f-school" placeholder="School name"></div>
+  <div class="field"><label class="f-label">Your role</label><input type="text" id="f-role" placeholder="e.g. IT Director, Principal, CTO"></div>
+</div>
+
+<!-- ══════════════ SCREEN 1: Station 1 — IT Director ══════════════ -->
+<div class="screen" id="s1">
+  <div class="st-badge">
+    <div class="st-num" style="background:var(--navy)">1</div>
+    <div><div class="st-label" style="color:var(--navy)">IT Director</div><div class="st-pres">Al Gorithm · Control &amp; Trust</div></div>
+  </div>
+  <div class="st-card" style="background:linear-gradient(135deg,var(--navy),var(--navy-l))">
+    <div class="st-theme">Control &amp; Trust</div>
+    <div class="st-tag">Building a secure, scalable ecosystem for 1,200 students</div>
+  </div>
+
+  <div class="q-block">
+    <div class="q-label">Where is your school with device management right now?</div>
+    <div class="choice-grid" data-q="s1q1">
+      <div class="choice" data-v="Just starting out">Just starting out</div>
+      <div class="choice" data-v="Manual processes">Manual processes</div>
+      <div class="choice" data-v="Partial MDM">Partial MDM</div>
+      <div class="choice" data-v="Fully automated">Fully automated</div>
+    </div>
+  </div>
+
+  <div class="q-block">
+    <div class="q-label">Which capability would make the biggest impact at your school?</div>
+    <div class="choice-grid" data-q="s1q2">
+      <div class="choice" data-v="Automated enrolment">Automated enrolment</div>
+      <div class="choice" data-v="Federated identity &amp; SSO">Identity &amp; SSO</div>
+      <div class="choice" data-v="Local AI governance">Local AI governance</div>
+      <div class="choice" data-v="All of these">All of these</div>
+    </div>
+  </div>
+
+  <div class="q-block">
+    <div class="q-label">How ready is your school to act on this?</div>
+    <div class="choice-grid" data-q="s1q3">
+      <div class="choice" data-v="Not yet a priority">Not a priority yet</div>
+      <div class="choice" data-v="Worth exploring">Worth exploring</div>
+      <div class="choice" data-v="Actively working on it">Actively on it</div>
+      <div class="choice" data-v="Ready to move now">Ready to move</div>
+    </div>
+  </div>
+
+  <div class="notes-wrap">
+    <span class="notes-lbl">Notes (optional)</span>
+    <textarea id="n-s1" placeholder="Anything you want to remember from this station…"></textarea>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN 2: Station 2 — Secondary ══════════════ -->
+<div class="screen" id="s2">
+  <div class="st-badge">
+    <div class="st-num" style="background:var(--green)">2</div>
+    <div><div class="st-label" style="color:var(--green)">Secondary Teacher</div><div class="st-pres">Les Onplan · Removing Friction</div></div>
+  </div>
+  <div class="st-card" style="background:linear-gradient(135deg,var(--green),var(--green-l))">
+    <div class="st-theme">Removing Friction</div>
+    <div class="st-tag">How well-designed technology gives time back to teachers</div>
+  </div>
+
+  <div class="q-block">
+    <div class="q-label">How much lesson time do your teachers lose to tech setup?</div>
+    <div class="choice-grid" data-q="s2q1">
+      <div class="choice" data-v="Under 2 minutes">Under 2 min</div>
+      <div class="choice" data-v="2–5 minutes">2–5 min</div>
+      <div class="choice" data-v="5–10 minutes">5–10 min</div>
+      <div class="choice" data-v="More than 10 minutes">10+ min</div>
+    </div>
+  </div>
+
+  <div class="q-block">
+    <div class="q-label">What would remove the most friction for your teachers?</div>
+    <div class="choice-grid" data-q="s2q2">
+      <div class="choice" data-v="Faster lesson start">Faster lesson start</div>
+      <div class="choice" data-v="Silent app management">App management</div>
+      <div class="choice" data-v="Tools to help manage their class">Tools to help manage their class</div>
+      <div class="choice" data-v="All of the above">All of the above</div>
+    </div>
+  </div>
+
+  <div class="q-block">
+    <div class="q-label">How ready is your school to act on this?</div>
+    <div class="choice-grid" data-q="s2q3">
+      <div class="choice" data-v="Not yet a priority">Not a priority yet</div>
+      <div class="choice" data-v="Worth exploring">Worth exploring</div>
+      <div class="choice" data-v="Actively working on it">Actively on it</div>
+      <div class="choice" data-v="Ready to move now">Ready to move</div>
+    </div>
+  </div>
+
+  <div class="notes-wrap">
+    <span class="notes-lbl">Notes (optional)</span>
+    <textarea id="n-s2" placeholder="Anything you want to remember from this station…"></textarea>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN 3: Station 3 — Primary ══════════════ -->
+<div class="screen" id="s3">
+  <div class="st-badge">
+    <div class="st-num" style="background:var(--amber)">3</div>
+    <div><div class="st-label" style="color:var(--amber)">Primary Teacher</div><div class="st-pres">Flo Rishing · Learning &amp; Opportunity</div></div>
+  </div>
+  <div class="st-card" style="background:linear-gradient(135deg,var(--amber),var(--amber-l))">
+    <div class="st-theme">Learning &amp; Opportunity</div>
+    <div class="st-tag">What becomes possible when technology meets every learner</div>
+  </div>
+
+  <div class="q-block">
+    <div class="q-label">Which challenge resonates most for your primary learners?</div>
+    <div class="choice-grid" data-q="s3q1">
+      <div class="choice" data-v="Differentiating learning">Differentiating learning</div>
+      <div class="choice" data-v="Accessibility needs">Accessibility needs</div>
+      <div class="choice" data-v="Creative expression">Creative expression</div>
+      <div class="choice" data-v="All of the above">All of the above</div>
+    </div>
+  </div>
+
+  <div class="q-block">
+    <div class="q-label">How many students in your school would benefit from these tools?</div>
+    <div class="choice-grid" data-q="s3q2">
+      <div class="choice" data-v="A small group">A small group</div>
+      <div class="choice" data-v="About half our students">About half</div>
+      <div class="choice" data-v="Most students">Most students</div>
+      <div class="choice" data-v="Every single student">Every student</div>
+    </div>
+  </div>
+
+  <div class="q-block">
+    <div class="q-label">How ready is your school to act on this?</div>
+    <div class="choice-grid" data-q="s3q3">
+      <div class="choice" data-v="Not yet a priority">Not a priority yet</div>
+      <div class="choice" data-v="Worth exploring">Worth exploring</div>
+      <div class="choice" data-v="Actively working on it">Actively on it</div>
+      <div class="choice" data-v="Ready to move now">Ready to move</div>
+    </div>
+  </div>
+
+  <div class="notes-wrap">
+    <span class="notes-lbl">Notes (optional)</span>
+    <textarea id="n-s3" placeholder="Anything you want to remember from this station…"></textarea>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN 4: Overall ══════════════ -->
+<div class="screen" id="s4">
+  <div class="sec-title">Overall</div>
+  <div class="sec-sub">Two quick questions, then you're done.</div>
+
+  <div class="q-block">
+    <div class="q-label">What was your biggest insight from today?</div>
+    <div class="choice-grid solo" data-q="ovq1">
+      <div class="choice" data-v="AI governance is more achievable than I thought">AI governance is more achievable than I thought</div>
+      <div class="choice" data-v="Teachers deserve much better tools than they have">Teachers deserve better tools than they have</div>
+      <div class="choice" data-v="Every learner can be supported with the right ecosystem">Every learner can be supported with the right ecosystem</div>
+      <div class="choice" data-v="It all works because the ecosystem is connected">It all works because the ecosystem is connected</div>
+      <div class="choice" data-v="All of the above">All of the above</div>
+    </div>
+  </div>
+
+  <div class="q-block">
+    <div class="q-label">What's your most likely next step?</div>
+    <div class="choice-grid solo" data-q="ovq2">
+      <div class="choice" data-v="Book a follow-up conversation with Apple">Book a follow-up with Apple</div>
+      <div class="choice" data-v="Explore a pilot program at my school">Explore a pilot at my school</div>
+      <div class="choice" data-v="Share what I've seen with my leadership team">Share this with my leadership team</div>
+      <div class="choice" data-v="Research and compare options further">Research and compare options</div>
+      <div class="choice" data-v="All of the above">All of the above</div>
+    </div>
+  </div>
+
+  <div class="notes-wrap">
+    <span class="notes-lbl">Overall reflection (optional)</span>
+    <textarea id="n-ov" placeholder="Any final thoughts, questions or things you want to take away…" style="min-height:110px"></textarea>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN 5: Summary + Share ══════════════ -->
+<div class="screen" id="s5">
+  <div class="sum-hi" id="sum-hi">Thank you</div>
+  <div class="sum-date" id="sum-date"></div>
+
+  <div class="sum-block">
+    <div class="sum-hd" style="background:var(--navy)">Station 1 · IT Director · Control &amp; Trust</div>
+    <div class="sum-body">
+      <div class="sum-row"><div class="sum-q">Current situation</div><div class="sum-a" id="d-s1q1"></div></div>
+      <div class="sum-row"><div class="sum-q">Biggest impact</div><div class="sum-a" id="d-s1q2"></div></div>
+      <div class="sum-row"><div class="sum-q">Readiness</div><div class="sum-a" id="d-s1q3"></div></div>
+      <div class="sum-row" id="row-s1n" style="display:none"><div class="sum-q">Notes</div><div class="sum-a" id="d-s1n"></div></div>
+    </div>
+  </div>
+
+  <div class="sum-block">
+    <div class="sum-hd" style="background:var(--green)">Station 2 · Secondary Teacher · Removing Friction</div>
+    <div class="sum-body">
+      <div class="sum-row"><div class="sum-q">Lesson time lost</div><div class="sum-a" id="d-s2q1"></div></div>
+      <div class="sum-row"><div class="sum-q">Biggest friction fix</div><div class="sum-a" id="d-s2q2"></div></div>
+      <div class="sum-row"><div class="sum-q">Readiness</div><div class="sum-a" id="d-s2q3"></div></div>
+      <div class="sum-row" id="row-s2n" style="display:none"><div class="sum-q">Notes</div><div class="sum-a" id="d-s2n"></div></div>
+    </div>
+  </div>
+
+  <div class="sum-block">
+    <div class="sum-hd" style="background:var(--amber)">Station 3 · Primary Teacher · Learning &amp; Opportunity</div>
+    <div class="sum-body">
+      <div class="sum-row"><div class="sum-q">Key challenge</div><div class="sum-a" id="d-s3q1"></div></div>
+      <div class="sum-row"><div class="sum-q">Students who'd benefit</div><div class="sum-a" id="d-s3q2"></div></div>
+      <div class="sum-row"><div class="sum-q">Readiness</div><div class="sum-a" id="d-s3q3"></div></div>
+      <div class="sum-row" id="row-s3n" style="display:none"><div class="sum-q">Notes</div><div class="sum-a" id="d-s3n"></div></div>
+    </div>
+  </div>
+
+  <div class="sum-block">
+    <div class="sum-hd" style="background:#2c2c2e">Overall</div>
+    <div class="sum-body">
+      <div class="sum-row"><div class="sum-q">Biggest insight</div><div class="sum-a" id="d-ovq1"></div></div>
+      <div class="sum-row"><div class="sum-q">Next step</div><div class="sum-a" id="d-ovq2"></div></div>
+      <div class="sum-row" id="row-ovn" style="display:none"><div class="sum-q">Reflection</div><div class="sum-a" id="d-ovn"></div></div>
+    </div>
+  </div>
+
+  <div class="share-row">
+    <button class="share-btn primary" onclick="doShare()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      AirDrop or Share my reflection
+    </button>
+    <button class="share-btn reset-btn" onclick="doReset()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+      Start a new reflection
+    </button>
+  </div>
+</div>
+
+</div><!-- /screens -->
+
+<!-- Bottom nav -->
+<div id="nav" class="first">
+  <button class="nb back" onclick="go(-1)">←</button>
+  <button class="nb fwd it" id="btn-fwd" onclick="go(1)">Let's go →</button>
+</div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+const ans = {
+  s1q1:'', s1q2:'', s1q3:'', s1n:'',
+  s2q1:'', s2q2:'', s2q3:'', s2n:'',
+  s3q1:'', s3q2:'', s3q3:'', s3n:'',
+  ovq1:'', ovq2:'', ovn:''
+}
+let cur = 0
+const TOTAL = 6
+
+const fwdLabels = ['Let\'s go →','Next →','Next →','Next →','See my summary →','']
+const fwdCols   = ['it','it','sec','pri','dk','dk']
+
+// ── Choices ────────────────────────────────────────────────
+document.querySelectorAll('.choice').forEach(el => {
+  el.addEventListener('click', () => {
+    const grid  = el.closest('.choice-grid')
+    const key   = grid.dataset.q
+    const val   = el.dataset.v
+    ans[key]    = val
+    const color = key.startsWith('s1') ? 'var(--navy)' :
+                  key.startsWith('s2') ? 'var(--green)' :
+                  key.startsWith('s3') ? 'var(--amber)' : 'var(--dark)'
+    grid.querySelectorAll('.choice').forEach(c => {
+      const sel = c.dataset.v === val
+      c.classList.toggle('sel', sel)
+      c.style.background = sel ? color : ''
+    })
+    save()
+  })
+})
+
+// ── Text fields ────────────────────────────────────────────
+;['s1','s2','s3','ov'].forEach(k => {
+  const el = document.getElementById('n-' + k)
+  if (el) el.addEventListener('input', () => { ans[k + 'n'] = el.value; save() })
+})
+
+// ── Navigation ─────────────────────────────────────────────
+function go(dir) {
+  if (dir === 1 && cur === 0) {
+    const nm = document.getElementById('f-name').value.trim()
+    if (!nm) {
+      const el = document.getElementById('f-name')
+      el.style.borderColor = '#ff3b30'
+      el.focus()
+      setTimeout(() => el.style.borderColor = '', 2000)
+      return
+    }
+  }
+  if (dir === 1 && cur === TOTAL - 2) buildSummary()
+
+  const screens = document.querySelectorAll('.screen')
+  screens[cur].classList.remove('active')
+
+  cur = Math.max(0, Math.min(TOTAL - 1, cur + dir))
+  screens[cur].classList.add('active')
+  screens[cur].scrollTop = 0
+  updateUI()
+}
+
+function updateUI() {
+  document.getElementById('prog-fill').style.width = (cur / (TOTAL-1) * 100) + '%'
+  const nav = document.getElementById('nav')
+  nav.classList.toggle('first', cur === 0)
+  nav.classList.toggle('last',  cur === TOTAL - 1)
+  const btn = document.getElementById('btn-fwd')
+  btn.textContent = fwdLabels[cur]
+  btn.className   = `nb fwd ${fwdCols[cur]}`
+}
+
+// ── Summary ────────────────────────────────────────────────
+function g(id) { const e = document.getElementById(id); return e ? e.value.trim() : '' }
+
+function buildSummary() {
+  const name = g('f-name')
+  document.getElementById('sum-hi').textContent   = `Thank you, ${name.split(' ')[0]}.`
+  document.getElementById('sum-date').textContent =
+    `${g('f-school') || 'Hawthorne College'}  ·  ` +
+    new Date().toLocaleDateString('en-AU', { day:'numeric', month:'long', year:'numeric' })
+
+  const rows = [
+    ['d-s1q1','s1q1'],['d-s1q2','s1q2'],['d-s1q3','s1q3'],
+    ['d-s2q1','s2q1'],['d-s2q2','s2q2'],['d-s2q3','s2q3'],
+    ['d-s3q1','s3q1'],['d-s3q2','s3q2'],['d-s3q3','s3q3'],
+    ['d-ovq1','ovq1'],['d-ovq2','ovq2'],
+  ]
+  rows.forEach(([elId, key]) => {
+    const el = document.getElementById(elId)
+    if (!el) return
+    el.textContent  = ans[key] || '—'
+    el.className    = 'sum-a' + (!ans[key] ? ' mt' : '')
+  })
+
+  const noteRows = [['row-s1n','d-s1n','s1n'],['row-s2n','d-s2n','s2n'],['row-s3n','d-s3n','s3n'],['row-ovn','d-ovn','ovn']]
+  noteRows.forEach(([rowId, elId, key]) => {
+    const row = document.getElementById(rowId)
+    const el  = document.getElementById(elId)
+    if (!row || !el) return
+    row.style.display = ans[key] ? '' : 'none'
+    el.textContent    = ans[key]
+  })
+}
+
+// ── "All of the above" expansion ──────────────────────────
+const Q_OPTIONS = {
+  s2q2: ['Faster lesson start', 'App management', 'Tools to help manage their class'],
+  s3q1: ['Differentiating learning', 'Accessibility needs', 'Creative expression'],
+  ovq1: [
+    'AI governance is more achievable than I thought',
+    'Teachers deserve much better tools than they have',
+    'Every learner can be supported with the right ecosystem',
+    'It all works because the ecosystem is connected'
+  ],
+  ovq2: [
+    'Book a follow-up with Apple',
+    'Explore a pilot at my school',
+    'Share this with my leadership team',
+    'Research and compare options'
+  ]
+}
+
+function expand(key, val) {
+  if (val === 'All of the above' && Q_OPTIONS[key]) {
+    return Q_OPTIONS[key].map(o => `• ${o}`).join('\n')
+  }
+  return val
+}
+
+// ── PDF ────────────────────────────────────────────────────
+function buildPDF() {
+  const jspdf = window.jspdf
+  if (!jspdf) return null
+  const { jsPDF } = jspdf
+  const doc  = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' })
+  const pw   = 210
+  const ph   = 297
+  const mg   = 18
+  const cw   = pw - mg * 2
+  let   y    = 0
+
+  doc.setFillColor(27, 58, 107)
+  doc.rect(0, 0, pw, 26, 'F')
+  doc.setTextColor(255,255,255)
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(16)
+  doc.text('Hawthorne College', mg, 11)
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(10)
+  doc.text('A Day in the Life  ·  My Reflection', mg, 19)
+  y = 34
+
+  const name   = g('f-name')   || 'Participant'
+  const school = g('f-school') || ''
+  const role   = g('f-role')   || ''
+  const date   = new Date().toLocaleDateString('en-AU', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+
+  doc.setTextColor(29,29,31)
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(13)
+  doc.text(name, mg, y); y += 6
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(10)
+  doc.setTextColor(110,110,115)
+  if (school || role) { doc.text([school, role].filter(Boolean).join('  ·  '), mg, y); y += 5 }
+  doc.text(date, mg, y); y += 10
+
+  function section(title, rgb, rows) {
+    if (y > ph - 50) { doc.addPage(); y = 18 }
+    doc.setFillColor(...rgb)
+    doc.rect(mg - 2, y, cw + 4, 8, 'F')
+    doc.setTextColor(255,255,255)
+    doc.setFont('helvetica','bold')
+    doc.setFontSize(8)
+    doc.text(title.toUpperCase(), mg, y + 5.5)
+    y += 12
+    rows.forEach(([label, value]) => {
+      if (!value) return
+      if (y > ph - 20) { doc.addPage(); y = 18 }
+      doc.setTextColor(174,174,178)
+      doc.setFont('helvetica','bold')
+      doc.setFontSize(8)
+      doc.text(label.toUpperCase(), mg, y); y += 5
+      doc.setTextColor(29,29,31)
+      doc.setFont('helvetica','normal')
+      doc.setFontSize(11)
+      const lines = value.split('\n').flatMap(segment => doc.splitTextToSize(segment, cw))
+      doc.text(lines, mg, y); y += lines.length * 5.5 + 6
+    })
+    y += 4
+  }
+
+  section('Station 1  ·  IT Director  ·  Control & Trust', [27,58,107], [
+    ['Current situation',    ans.s1q1],
+    ['Biggest impact',       ans.s1q2],
+    ['Readiness',            ans.s1q3],
+    ['Notes',                ans.s1n],
+  ])
+  section('Station 2  ·  Secondary Teacher  ·  Removing Friction', [26,74,46], [
+    ['Lesson time lost',     ans.s2q1],
+    ['Biggest friction fix', expand('s2q2', ans.s2q2)],
+    ['Readiness',            ans.s2q3],
+    ['Notes',                ans.s2n],
+  ])
+  section('Station 3  ·  Primary Teacher  ·  Learning & Opportunity', [196,112,32], [
+    ['Key challenge',        expand('s3q1', ans.s3q1)],
+    ['Students who\'d benefit', ans.s3q2],
+    ['Readiness',            ans.s3q3],
+    ['Notes',                ans.s3n],
+  ])
+  section('Overall', [44,44,46], [
+    ['Biggest insight',  expand('ovq1', ans.ovq1)],
+    ['Next step',        expand('ovq2', ans.ovq2)],
+    ['Reflection',       ans.ovn],
+  ])
+
+  // ── Resources ─
+  const resources = [
+    { title:'Apple Deployment Guide for Education', desc:'A guided introduction to deploying Apple devices in schools. Whether you\'re planning your first rollout, or scaling up from a small trial, these short, focused sessions walk through the core tools and best practices — step by step. Including Apple School Manager, Automated Device Enrolment and Managed Apple Accounts.', url:'https://apple.co/GetStartedEDU' },
+    { title:'Enforcing Managed Apple Accounts', desc:'Review how to change Apple School Manager settings so that users can sign in on any organisation-owned device with only their Managed Apple Account.', url:'https://support.apple.com/guide/apple-school-manager/axm53xk34bq/web' },
+    { title:'Install and Enforce Software Updates for Apple Devices', desc:'Review how to install and enforce software updates using Declarative Device Management. Consult your Device Management Service provider for more detail on how to implement these options within their product.', url:'https://support.apple.com/guide/deployment/depd30715cbb/web' },
+    { title:'Intro to Federated Authentication with Apple School Manager', desc:'Details on Federation in Apple School Manager with Google Workspace, Entra ID and other identity providers.', url:'https://support.apple.com/guide/apple-school-manager/axmb19317543/web' },
+    { title:'Platform Single Sign-On for macOS', desc:null, url:'https://support.apple.com/en-au/guide/deployment/dep7bbb05313/web' },
+    { title:'Platform SSO Configuration Guide for macOS — Microsoft Intune', desc:null, url:'https://learn.microsoft.com/en-us/intune/intune-service/configuration/platform-sso-macos' },
+    { title:'Deploying macOS Platform SSO for Microsoft Entra ID — Jamf Pro', desc:null, url:'https://learn.jamf.com/r/en-US/technical-articles/Platform_SSO_for_Microsoft_Entra_ID' },
+    { title:'Deploying macOS Platform SSO for Microsoft Entra ID — Jamf School', desc:null, url:'https://learn.jamf.com/r/en-US/jamf-school-documentation/Deploying_macOS_Platform_SSO_for_Microsoft_Entra_ID_with_Jamf_School' },
+    { title:'Rethinking Critical AI Infrastructure', desc:'Find out why security, economics, and performance are driving enterprises toward on-device AI infrastructure.', url:'https://www.apple.com/business/enterprise/docs/resources/Omdia_Rethinking_Critical_AI_Infrastructure.pdf' },
+  ]
+
+  if (y > ph - 60) { doc.addPage(); y = 18 }
+  doc.setFillColor(27, 58, 107)
+  doc.rect(mg - 2, y, cw + 4, 8, 'F')
+  doc.setTextColor(255,255,255)
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(8)
+  doc.text('RESOURCES & FURTHER READING', mg, y + 5.5)
+  y += 13
+
+  resources.forEach(({ title, desc, url }) => {
+    const estimatedH = (desc ? 22 : 12)
+    if (y > ph - estimatedH - 14) { doc.addPage(); y = 18 }
+    doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(29,29,31)
+    const titleLines = doc.splitTextToSize(title, cw - 4)
+    doc.text(titleLines, mg, y); y += titleLines.length * 5.2
+    if (desc) {
+      doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(110,110,115)
+      const descLines = doc.splitTextToSize(desc, cw - 4)
+      doc.text(descLines, mg, y); y += descLines.length * 4.8
+    }
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(0,102,204)
+    const shortUrl = url.replace(/^https?:\/\//, '')
+    const urlLines = doc.splitTextToSize(shortUrl, cw - 4)
+    doc.text(urlLines, mg, y)
+    const urlBboxH = urlLines.length * 4.5
+    const urlBboxW = Math.min(doc.getTextWidth(urlLines[0]), cw)
+    doc.link(mg, y - 4, urlBboxW, urlBboxH + 2, { url })
+    y += urlLines.length * 4.5 + 7
+    doc.setDrawColor(229,229,234); doc.line(mg, y - 3, mg + cw, y - 3); y += 2
+  })
+
+  const fp = doc.getNumberOfPages()
+  for (let i = 1; i <= fp; i++) {
+    doc.setPage(i)
+    doc.setDrawColor(229,229,234); doc.line(mg, ph - 12, pw - mg, ph - 12)
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(174,174,178)
+    doc.text('Hawthorne College  ·  A Day in the Life  ·  Participant Reflection', mg, ph - 7)
+    doc.text(`${i} / ${fp}`, pw - mg, ph - 7, { align:'right' })
+  }
+
+  return doc
+}
+
+// ── Share ──────────────────────────────────────────────────
+async function doShare() {
+  const doc = buildPDF()
+  if (!doc) { alert('The PDF library hasn\'t loaded yet — please check your internet connection and try again.'); return }
+  const name  = (g('f-name') || 'Reflection').replace(/\s+/g,'_')
+  const fname = `${name}_Hawthorne.pdf`
+  const buf   = doc.output('arraybuffer')
+  const blob  = new Blob([buf], { type:'application/pdf' })
+  const file  = new File([blob], fname, { type:'application/pdf' })
+  try {
+    if (navigator.canShare && navigator.canShare({ files:[file] })) {
+      await navigator.share({ files:[file], title:'Hawthorne College — My Reflection' })
+    } else if (navigator.share) {
+      await navigator.share({ title:'Hawthorne College — My Reflection', text:'My reflection from the Hawthorne College A Day in the Life experience.' })
+    } else {
+      alert('Sharing is not supported in this browser. Try opening this page in Safari.')
+    }
+  } catch(e) {
+    if (e.name !== 'AbortError') { alert('Could not share the PDF. Please ensure this page is open in Safari.') }
+  }
+}
+
+function doDownload() {
+  const doc = buildPDF()
+  if (!doc) { alert('PDF library not available. Please try again when connected.'); return }
+  const name = (g('f-name') || 'Reflection').replace(/\s+/g,'_')
+  doc.save(`${name}_Hawthorne.pdf`)
+}
+
+function doReset() {
+  const btn = event.currentTarget
+  if (btn.dataset.confirm !== '1') {
+    btn.dataset.confirm = '1'
+    btn.textContent = 'Tap again to confirm reset'
+    btn.style.background = 'rgba(255,59,48,.18)'
+    setTimeout(() => {
+      btn.dataset.confirm = '0'
+      btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg> Start a new reflection`
+      btn.style.background = ''
+    }, 3000)
+    return
+  }
+  try { localStorage.removeItem('hc_r2') } catch(e) {}
+  Object.keys(ans).forEach(k => { ans[k] = '' })
+  ;['f-name','f-school','f-role','n-s1','n-s2','n-s3','n-ov'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = ''
+  })
+  document.querySelectorAll('.choice').forEach(el => { el.classList.remove('sel'); el.style.background = '' })
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+  cur = 0; document.getElementById('s0').classList.add('active'); updateUI()
+}
+
+// ── Persist ────────────────────────────────────────────────
+function save() {
+  try { localStorage.setItem('hc_r2', JSON.stringify({ ans, name:g('f-name'), school:g('f-school'), role:g('f-role') })) } catch(e){}
+}
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem('hc_r2') || 'null')
+    if (!d) return
+    Object.assign(ans, d.ans || {})
+    if (d.name)   document.getElementById('f-name').value   = d.name
+    if (d.school) document.getElementById('f-school').value = d.school
+    if (d.role)   document.getElementById('f-role').value   = d.role
+    ;['s1','s2','s3','ov'].forEach(k => {
+      const el = document.getElementById('n-' + k)
+      if (el && ans[k+'n']) el.value = ans[k+'n']
+    })
+    document.querySelectorAll('.choice').forEach(el => {
+      const key = el.closest('.choice-grid').dataset.q
+      if (ans[key] && el.dataset.v === ans[key]) {
+        el.classList.add('sel')
+        const col = key.startsWith('s1') ? 'var(--navy)' : key.startsWith('s2') ? 'var(--green)' : key.startsWith('s3') ? 'var(--amber)' : 'var(--dark)'
+        el.style.background = col
+      }
+    })
+  } catch(e){}
+}
+
+load()
+updateUI()
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('HC Reflect: new version available on next launch')
+            }
+          })
+        })
+      })
+      .catch(err => console.warn('SW registration failed:', err))
+  })
+}
+</script>
+</body>
+</html>
